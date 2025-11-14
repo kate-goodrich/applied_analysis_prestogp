@@ -1,5 +1,5 @@
 ---
-title: "PrestoGP practice example with given data"
+title: "PrestoGP practice example with package data"
 output: html_document
 ---
 
@@ -11,7 +11,7 @@ library(ggplot2)
 set.seed(2025)
 ```
 
-
+## Load data and prepare
 ```{r load-data}
 data(soil, package = "PrestoGP")
 soil <- soil[!is.na(soil[,5]),]
@@ -21,12 +21,16 @@ locs <- as.matrix(soil[,1:2])
 str(list(y=y, X=dim(X), locs=dim(locs)))
 ```
 
+
+## Fit models
 ```{r fit-model}
 soil.vm <- new("VecchiaModel", n_neighbors = 10)
 soil.vm <- prestogp_fit(soil.vm, y, X, locs)
 soil.vm
 ```
 
+
+## Impute missing y values
 ```{r impute-missing-y}
 miss <- sample(1:nrow(soil), 20)
 y.miss <- y
@@ -36,7 +40,7 @@ soil.vm2 <- prestogp_fit(soil.vm2, y.miss, X, locs, impute.y = TRUE)
 soil.vm2
 ```
 
-
+## Impute y values missing due to limit of detection
 ```{r Impute-y-missing-due-to-limit-of-detection}
 soil.lod <- quantile(y, 0.1)
 y.lod <- y
@@ -47,14 +51,14 @@ soil.vm3
 
 ```
 
-
+## Fit full model
 ```{r full-model}
 soil.fm <- new("FullModel")
 soil.fm <- prestogp_fit(soil.fm, y, X, locs)
 soil.fm
 ```
 
-
+## Fit multivariate model
 ```{r multivariate-model}
 ym <- list(soil[,5], soil[,7])                 # two nitrogen concentrations
 Xm <- list(); Xm[[1]] <- Xm[[2]] <- as.matrix(soil[,c(4,6,8,9)])
@@ -65,7 +69,7 @@ soil.mvm <- prestogp_fit(soil.mvm, ym, Xm, locsm)
 soil.mvm
 ```
 
-
+## Fit spatial-elevation model
 ```{r space-elevation-model}
 
 library(geoR)
@@ -82,6 +86,7 @@ soil.vm.elev
 ```
 
 
+## Plot moisture vs first covariate
 ```{r plot}
 df_plot <- data.frame(y = y, x = X[,1])
 ggplot(df_plot, aes(x, y)) + geom_point(alpha = 0.5) + labs(x="X1", y="Moisture")
