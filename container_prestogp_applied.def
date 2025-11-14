@@ -1,0 +1,70 @@
+BootStrap: docker
+From: rocker/geospatial:latest
+
+%post -c /bin/bash
+
+    set -euo pipefail
+    export DEBIAN_FRONTEND=noninteractive
+
+    # Ensure /dev and /dev/null exist in the build environment
+    mkdir -p /dev
+    if [ ! -e /dev/null ]; then
+      # Try to create the character device; if not permitted, fall back to a symlink
+      ( mknod -m 666 /dev/null c 1 3 || ln -sf /proc/self/fd/2 /dev/null )
+    fi
+
+    apt-get update
+
+    # Locale and fonts
+    apt-get install -y locales
+    locale-gen en_US.UTF-8
+    apt-get install -y fonts-dejavu fonts-liberation fonts-noto fonts-unifont
+
+    # Core system packages
+    apt-get install -y \
+        libcurl4-openssl-dev libssl-dev libicu-dev ca-certificates curl \
+        slurm-client git-lfs p7zip-full gdal-bin libgdal-dev libudunits2-dev \
+        libgeos-dev libproj-dev libxml2-dev libv8-dev build-essential cmake \
+        libomp-dev
+
+    git lfs install
+    apt-get clean
+
+    # Locale
+    echo "LANG=en_US.UTF-8" >> /etc/default/locale
+    echo "LC_ALL=en_US.UTF-8" >> /etc/default/locale
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+
+    # Create standard dirs
+    mkdir -p /pipeline /input /opt/_targets /project /data /scratch
+
+    # Install R packages using pak (set CRAN explicitly)
+    Rscript -e "install.packages('pak', repos = 'https://cloud.r-project.org')"
+
+    Rscript -e "pak::pak(c(
+      'devtools','tarchetypes','testthat','tidymodels','bonsai',
+      'qs','qs2','kernlab','lightgbm','lwgeom','doRNG','quarto',
+      'sf','terra','raster','ncdf4','dplyr','tidyr','archive',
+      'languageserver','targets','xml2','exactextractr',
+      'rOpenGov/secretbase@0.5.0',
+      'NIEHS/amadeus','stringr','circular','gganimate','gifski','cowplot','viridis','mgcv',
+      'h3lib','h3r','h3jsr','V8', 'janitor', 'duckdb', 'DBI', 'tigris'
+    ))"
+
+    Rscript -e "devtools::install_github('NIEHS/PrestoGP')"
+
+
+%environment
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+    export TERM=xterm-256color
+    export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+    export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
+%runscript
+    echo "Use apptainer exec ... R or Rscript inside this container."
+
+%labels
+    Author="Kate"
+    Description="Geospatial container with R, MODIS tools, Unicode text, and 7z extraction support."

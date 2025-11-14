@@ -1,0 +1,23 @@
+---
+title: "PrestoGP practice example with given data"
+output: pdf_document
+---
+
+
+```{r setup, message=FALSE, warning=FALSE}
+.libPaths("/usr/local/lib/R/site-library")
+library(PrestoGP)
+library(ggplot2)
+set.seed(2025)
+```
+
+
+```{r load-data}
+data(soil, package = "PrestoGP")
+soil <- soil[!is.na(soil[,5]),]
+y <- soil[,4]             # moisture content
+X <- as.matrix(soil[,5:9])
+locs <- as.matrix(soil[,1:2])
+str(list(y=y, X=dim(X), locs=dim(locs)))
+```
+
