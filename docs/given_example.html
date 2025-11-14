@@ -368,6 +368,272 @@ str(list(y=y, X=dim(X), locs=dim(locs)))</code></pre>
 ##  $ y   : num [1:200] 7.23 14.63 12.67 13.73 7.4 ...
 ##  $ X   : int [1:2] 200 5
 ##  $ locs: int [1:2] 200 2</code></pre>
+<pre class="r"><code>soil.vm &lt;- new(&quot;VecchiaModel&quot;, n_neighbors = 10)
+soil.vm &lt;- prestogp_fit(soil.vm, y, X, locs)</code></pre>
+<pre><code>## 
+## Estimating initial beta... 
+## Estimation of initial beta complete 
+## 
+## Beginning iteration 1 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 1 complete 
+## Current penalized negative log likelihood: 487.701 
+## Current MSE: 9.104869 
+## Beginning iteration 2 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 2 complete 
+## Current penalized negative log likelihood: 482.5181 
+## Current MSE: 9.040968 
+## Beginning iteration 3 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 3 complete 
+## Current penalized negative log likelihood: 482.1626 
+## Current MSE: 9.040136 
+## Beginning iteration 4 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 4 complete 
+## Current penalized negative log likelihood: 482.1467 
+## Current MSE: 9.04814 
+## Beginning iteration 5 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 5 complete 
+## Current penalized negative log likelihood: 482.1467 
+## Current MSE: 9.018459</code></pre>
+<pre class="r"><code>soil.vm</code></pre>
+<pre><code>## Matern covariance parameters (theta): 
+## $sigma
+## [1] 10.28376
+## 
+## $scale
+## [1] 13.52572
+## 
+## $smoothness
+## [1] 0.9088149
+## 
+## $nuggets
+## [1] 0.7629514
+## 
+## Regression coefficients (beta): 
+## $Y
+##        NO3.N        NH4.N          DOC         N20N 
+## -0.030153253  0.023570590  0.001740194 14.502823295 
+## 
+## $`(Intercept)`
+## (Intercept) 
+##    11.40227 
+## 
+## Model type: VecchiaModel 
+## Nearest neighbors: 10 
+## Scaling: 1 1 
+## Penalized likelihood: 482.1467 
+## MSE: 9.018459</code></pre>
+<pre class="r"><code>miss &lt;- sample(1:nrow(soil), 20)
+y.miss &lt;- y
+y.miss[miss] &lt;- NA
+soil.vm2 &lt;- new(&quot;VecchiaModel&quot;, n_neighbors = 10)
+soil.vm2 &lt;- prestogp_fit(soil.vm2, y.miss, X, locs, impute.y = TRUE)</code></pre>
+<pre><code>## 
+## Estimating initial beta... 
+## Estimation of initial beta complete 
+## 
+## Beginning iteration 1 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y&#39;s... 
+## Imputation complete 
+## Iteration 1 complete 
+## Current penalized negative log likelihood: 478.5195 
+## Current MSE: 7.992472 
+## Beginning iteration 2 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y&#39;s... 
+## Imputation complete 
+## Iteration 2 complete 
+## Current penalized negative log likelihood: 470.7962 
+## Current MSE: 8.095935 
+## Beginning iteration 3 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y&#39;s... 
+## Imputation complete 
+## Iteration 3 complete 
+## Current penalized negative log likelihood: 469.8038 
+## Current MSE: 8.124704 
+## Beginning iteration 4 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y&#39;s... 
+## Imputation complete 
+## Iteration 4 complete 
+## Current penalized negative log likelihood: 468.9619 
+## Current MSE: 8.143705 
+## Beginning iteration 5 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y&#39;s... 
+## Imputation complete 
+## Iteration 5 complete 
+## Current penalized negative log likelihood: 468.4187 
+## Current MSE: 8.1388 
+## Beginning iteration 6 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y&#39;s... 
+## Imputation complete 
+## Iteration 6 complete 
+## Current penalized negative log likelihood: 468.1835 
+## Current MSE: 8.16167 
+## Beginning iteration 7 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y&#39;s... 
+## Imputation complete 
+## Iteration 7 complete 
+## Current penalized negative log likelihood: 468.1649 
+## Current MSE: 8.165805 
+## Beginning iteration 8 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 8 complete 
+## Current penalized negative log likelihood: 468.1649 
+## Current MSE: 8.161238</code></pre>
+<pre class="r"><code>soil.vm2</code></pre>
+<pre><code>## Matern covariance parameters (theta): 
+## $sigma
+## [1] 9.561545
+## 
+## $scale
+## [1] 12.23572
+## 
+## $smoothness
+## [1] 1.038871
+## 
+## $nuggets
+## [1] 0.770053
+## 
+## Regression coefficients (beta): 
+## $Y
+##       NO3.N       NH4.N         DOC 
+## -0.04352194  0.02984236  0.00360866 
+## 
+## $`(Intercept)`
+## (Intercept) 
+##    11.31979 
+## 
+## Model type: VecchiaModel 
+## Nearest neighbors: 10 
+## Scaling: 1 1 
+## Penalized likelihood: 468.1649 
+## MSE: 8.161238</code></pre>
+<pre class="r"><code>soil.lod &lt;- quantile(y, 0.1)
+y.lod &lt;- y
+y.lod[y.lod &lt;= soil.lod] &lt;- NA
+soil.vm3 &lt;- new(&quot;VecchiaModel&quot;, n_neighbors = 10)
+soil.vm3 &lt;- prestogp_fit(soil.vm3, y.lod, X, locs, impute.y = TRUE, lod.upper = soil.lod)</code></pre>
+<pre><code>## 
+## Imputing missing y&#39;s and estimating initial beta... 
+## Estimation of initial beta complete 
+## 
+## Beginning iteration 1 
+## Estimating theta... 
+## Estimation of theta complete 
+## Imputing missing y&#39;s... 
+## Imputation complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 1 complete 
+## Current penalized negative log likelihood: 490.7925 
+## Current MSE: 9.468412 
+## Beginning iteration 2 
+## Estimating theta... 
+## Estimation of theta complete 
+## Imputing missing y&#39;s... 
+## Imputation complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 2 complete 
+## Current penalized negative log likelihood: 474.7767 
+## Current MSE: 8.544219 
+## Beginning iteration 3 
+## Estimating theta... 
+## Estimation of theta complete 
+## Imputing missing y&#39;s... 
+## Imputation complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 3 complete 
+## Current penalized negative log likelihood: 474.6977 
+## Current MSE: 8.540108 
+## Beginning iteration 4 
+## Estimating theta... 
+## Estimation of theta complete 
+## Imputing missing y&#39;s... 
+## Imputation complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 4 complete 
+## Current penalized negative log likelihood: 474.6977 
+## Current MSE: 8.537138</code></pre>
+<pre class="r"><code>soil.vm3</code></pre>
+<pre><code>## Matern covariance parameters (theta): 
+## $sigma
+## [1] 9.732538
+## 
+## $scale
+## [1] 20.23945
+## 
+## $smoothness
+## [1] 0.6619094
+## 
+## $nuggets
+## [1] 0.833824
+## 
+## Regression coefficients (beta): 
+## $Y
+##        NO3.N        NH4.N          DOC         N20N 
+## -0.029170373  0.023776871  0.002438894 38.499060962 
+## 
+## $`(Intercept)`
+## (Intercept) 
+##    11.47614 
+## 
+## Model type: VecchiaModel 
+## Nearest neighbors: 10 
+## Scaling: 1 1 
+## Penalized likelihood: 474.6977 
+## MSE: 8.537138</code></pre>
 
 
 

@@ -36,6 +36,6 @@ list(
     tarchetypes::tar_render(
         example_practice,
         "R/given_example.Rmd",
-        output_dir = "results"
+        output_dir = "docs"
     )
 )

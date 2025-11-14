@@ -1,0 +1,454 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={PrestoGP practice example with given data},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{PrestoGP practice example with given data}
+\author{}
+\date{\vspace{-2.5em}}
+
+\begin{document}
+\maketitle
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{.libPaths}\NormalTok{(}\StringTok{"/usr/local/lib/R/site{-}library"}\NormalTok{)}
+\FunctionTok{library}\NormalTok{(PrestoGP)}
+\FunctionTok{library}\NormalTok{(ggplot2)}
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{2025}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{data}\NormalTok{(soil, }\AttributeTok{package =} \StringTok{"PrestoGP"}\NormalTok{)}
+\NormalTok{soil }\OtherTok{\textless{}{-}}\NormalTok{ soil[}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(soil[,}\DecValTok{5}\NormalTok{]),]}
+\NormalTok{y }\OtherTok{\textless{}{-}}\NormalTok{ soil[,}\DecValTok{4}\NormalTok{]             }\CommentTok{\# moisture content}
+\NormalTok{X }\OtherTok{\textless{}{-}} \FunctionTok{as.matrix}\NormalTok{(soil[,}\DecValTok{5}\SpecialCharTok{:}\DecValTok{9}\NormalTok{])}
+\NormalTok{locs }\OtherTok{\textless{}{-}} \FunctionTok{as.matrix}\NormalTok{(soil[,}\DecValTok{1}\SpecialCharTok{:}\DecValTok{2}\NormalTok{])}
+\FunctionTok{str}\NormalTok{(}\FunctionTok{list}\NormalTok{(}\AttributeTok{y=}\NormalTok{y, }\AttributeTok{X=}\FunctionTok{dim}\NormalTok{(X), }\AttributeTok{locs=}\FunctionTok{dim}\NormalTok{(locs)))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## List of 3
+##  $ y   : num [1:200] 7.23 14.63 12.67 13.73 7.4 ...
+##  $ X   : int [1:2] 200 5
+##  $ locs: int [1:2] 200 2
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{soil.vm }\OtherTok{\textless{}{-}} \FunctionTok{new}\NormalTok{(}\StringTok{"VecchiaModel"}\NormalTok{, }\AttributeTok{n\_neighbors =} \DecValTok{10}\NormalTok{)}
+\NormalTok{soil.vm }\OtherTok{\textless{}{-}} \FunctionTok{prestogp\_fit}\NormalTok{(soil.vm, y, X, locs)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Estimating initial beta... 
+## Estimation of initial beta complete 
+## 
+## Beginning iteration 1 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 1 complete 
+## Current penalized negative log likelihood: 487.701 
+## Current MSE: 9.104869 
+## Beginning iteration 2 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 2 complete 
+## Current penalized negative log likelihood: 482.5181 
+## Current MSE: 9.040968 
+## Beginning iteration 3 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 3 complete 
+## Current penalized negative log likelihood: 482.1626 
+## Current MSE: 9.040136 
+## Beginning iteration 4 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 4 complete 
+## Current penalized negative log likelihood: 482.1467 
+## Current MSE: 9.04814 
+## Beginning iteration 5 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 5 complete 
+## Current penalized negative log likelihood: 482.1467 
+## Current MSE: 9.018459
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{soil.vm}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Matern covariance parameters (theta): 
+## $sigma
+## [1] 10.28376
+## 
+## $scale
+## [1] 13.52572
+## 
+## $smoothness
+## [1] 0.9088149
+## 
+## $nuggets
+## [1] 0.7629514
+## 
+## Regression coefficients (beta): 
+## $Y
+##        NO3.N        NH4.N          DOC         N20N 
+## -0.030153253  0.023570590  0.001740194 14.502823295 
+## 
+## $`(Intercept)`
+## (Intercept) 
+##    11.40227 
+## 
+## Model type: VecchiaModel 
+## Nearest neighbors: 10 
+## Scaling: 1 1 
+## Penalized likelihood: 482.1467 
+## MSE: 9.018459
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{miss }\OtherTok{\textless{}{-}} \FunctionTok{sample}\NormalTok{(}\DecValTok{1}\SpecialCharTok{:}\FunctionTok{nrow}\NormalTok{(soil), }\DecValTok{20}\NormalTok{)}
+\NormalTok{y.miss }\OtherTok{\textless{}{-}}\NormalTok{ y}
+\NormalTok{y.miss[miss] }\OtherTok{\textless{}{-}} \ConstantTok{NA}
+\NormalTok{soil.vm2 }\OtherTok{\textless{}{-}} \FunctionTok{new}\NormalTok{(}\StringTok{"VecchiaModel"}\NormalTok{, }\AttributeTok{n\_neighbors =} \DecValTok{10}\NormalTok{)}
+\NormalTok{soil.vm2 }\OtherTok{\textless{}{-}} \FunctionTok{prestogp\_fit}\NormalTok{(soil.vm2, y.miss, X, locs, }\AttributeTok{impute.y =} \ConstantTok{TRUE}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Estimating initial beta... 
+## Estimation of initial beta complete 
+## 
+## Beginning iteration 1 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y's... 
+## Imputation complete 
+## Iteration 1 complete 
+## Current penalized negative log likelihood: 478.5195 
+## Current MSE: 7.992472 
+## Beginning iteration 2 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y's... 
+## Imputation complete 
+## Iteration 2 complete 
+## Current penalized negative log likelihood: 470.7962 
+## Current MSE: 8.095935 
+## Beginning iteration 3 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y's... 
+## Imputation complete 
+## Iteration 3 complete 
+## Current penalized negative log likelihood: 469.8038 
+## Current MSE: 8.124704 
+## Beginning iteration 4 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y's... 
+## Imputation complete 
+## Iteration 4 complete 
+## Current penalized negative log likelihood: 468.9619 
+## Current MSE: 8.143705 
+## Beginning iteration 5 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y's... 
+## Imputation complete 
+## Iteration 5 complete 
+## Current penalized negative log likelihood: 468.4187 
+## Current MSE: 8.1388 
+## Beginning iteration 6 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y's... 
+## Imputation complete 
+## Iteration 6 complete 
+## Current penalized negative log likelihood: 468.1835 
+## Current MSE: 8.16167 
+## Beginning iteration 7 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Imputing missing y's... 
+## Imputation complete 
+## Iteration 7 complete 
+## Current penalized negative log likelihood: 468.1649 
+## Current MSE: 8.165805 
+## Beginning iteration 8 
+## Estimating theta... 
+## Estimation of theta complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 8 complete 
+## Current penalized negative log likelihood: 468.1649 
+## Current MSE: 8.161238
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{soil.vm2}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Matern covariance parameters (theta): 
+## $sigma
+## [1] 9.561545
+## 
+## $scale
+## [1] 12.23572
+## 
+## $smoothness
+## [1] 1.038871
+## 
+## $nuggets
+## [1] 0.770053
+## 
+## Regression coefficients (beta): 
+## $Y
+##       NO3.N       NH4.N         DOC 
+## -0.04352194  0.02984236  0.00360866 
+## 
+## $`(Intercept)`
+## (Intercept) 
+##    11.31979 
+## 
+## Model type: VecchiaModel 
+## Nearest neighbors: 10 
+## Scaling: 1 1 
+## Penalized likelihood: 468.1649 
+## MSE: 8.161238
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{soil.lod }\OtherTok{\textless{}{-}} \FunctionTok{quantile}\NormalTok{(y, }\FloatTok{0.1}\NormalTok{)}
+\NormalTok{y.lod }\OtherTok{\textless{}{-}}\NormalTok{ y}
+\NormalTok{y.lod[y.lod }\SpecialCharTok{\textless{}=}\NormalTok{ soil.lod] }\OtherTok{\textless{}{-}} \ConstantTok{NA}
+\NormalTok{soil.vm3 }\OtherTok{\textless{}{-}} \FunctionTok{new}\NormalTok{(}\StringTok{"VecchiaModel"}\NormalTok{, }\AttributeTok{n\_neighbors =} \DecValTok{10}\NormalTok{)}
+\NormalTok{soil.vm3 }\OtherTok{\textless{}{-}} \FunctionTok{prestogp\_fit}\NormalTok{(soil.vm3, y.lod, X, locs, }\AttributeTok{impute.y =} \ConstantTok{TRUE}\NormalTok{, }\AttributeTok{lod.upper =}\NormalTok{ soil.lod)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Imputing missing y's and estimating initial beta... 
+## Estimation of initial beta complete 
+## 
+## Beginning iteration 1 
+## Estimating theta... 
+## Estimation of theta complete 
+## Imputing missing y's... 
+## Imputation complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 1 complete 
+## Current penalized negative log likelihood: 490.7925 
+## Current MSE: 9.468412 
+## Beginning iteration 2 
+## Estimating theta... 
+## Estimation of theta complete 
+## Imputing missing y's... 
+## Imputation complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 2 complete 
+## Current penalized negative log likelihood: 474.7767 
+## Current MSE: 8.544219 
+## Beginning iteration 3 
+## Estimating theta... 
+## Estimation of theta complete 
+## Imputing missing y's... 
+## Imputation complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 3 complete 
+## Current penalized negative log likelihood: 474.6977 
+## Current MSE: 8.540108 
+## Beginning iteration 4 
+## Estimating theta... 
+## Estimation of theta complete 
+## Imputing missing y's... 
+## Imputation complete 
+## Estimating beta... 
+## Estimation of beta complete 
+## Iteration 4 complete 
+## Current penalized negative log likelihood: 474.6977 
+## Current MSE: 8.537138
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{soil.vm3}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Matern covariance parameters (theta): 
+## $sigma
+## [1] 9.732538
+## 
+## $scale
+## [1] 20.23945
+## 
+## $smoothness
+## [1] 0.6619094
+## 
+## $nuggets
+## [1] 0.833824
+## 
+## Regression coefficients (beta): 
+## $Y
+##        NO3.N        NH4.N          DOC         N20N 
+## -0.029170373  0.023776871  0.002438894 38.499060962 
+## 
+## $`(Intercept)`
+## (Intercept) 
+##    11.47614 
+## 
+## Model type: VecchiaModel 
+## Nearest neighbors: 10 
+## Scaling: 1 1 
+## Penalized likelihood: 474.6977 
+## MSE: 8.537138
+\end{verbatim}
+
+\end{document}
