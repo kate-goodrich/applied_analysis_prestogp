@@ -11,7 +11,9 @@ library(ggplot2)
 set.seed(2025)
 ```
 
+
 ## Load data and prepare
+Pull the example dataset, drop rows with a missing covariate, and define the outcome (y), predictors (X), and spatial coordinates (locs). Print basic dimensions to sanity-check.
 ```{r load-data}
 data(soil, package = "PrestoGP")
 soil <- soil[!is.na(soil[,5]),]
@@ -23,6 +25,7 @@ str(list(y=y, X=dim(X), locs=dim(locs)))
 
 
 ## Fit models
+Fit a sparse Gaussian process (Vecchia approximation with 10 neighbors) to model moisture as a function of covariates and spatial correlation. Show estimated Matérn parameters and regression coefficients.
 ```{r fit-model}
 soil.vm <- new("VecchiaModel", n_neighbors = 10)
 soil.vm <- prestogp_fit(soil.vm, y, X, locs)
@@ -31,6 +34,7 @@ soil.vm
 
 
 ## Impute missing y values
+Randomly create 20 missing outcomes and refit with joint imputation (impute.y=TRUE). The model iterates: estimate covariance/mean, then impute missing y, and repeats until stable. Print results.
 ```{r impute-missing-y}
 miss <- sample(1:nrow(soil), 20)
 y.miss <- y
@@ -40,7 +44,9 @@ soil.vm2 <- prestogp_fit(soil.vm2, y.miss, X, locs, impute.y = TRUE)
 soil.vm2
 ```
 
+
 ## Impute y values missing due to limit of detection
+Treat low values as left-censored at the 10th percentile (proxy LOD). Refit with censored-value imputation by providing lod.upper. Print the fitted parameters for comparison.
 ```{r Impute-y-missing-due-to-limit-of-detection}
 soil.lod <- quantile(y, 0.1)
 y.lod <- y
@@ -51,14 +57,18 @@ soil.vm3
 
 ```
 
+
 ## Fit full model
+Fit the exact (dense) Gaussian process to the same data for a baseline comparison against the Vecchia approximation. Display parameters and fit metrics.
 ```{r full-model}
 soil.fm <- new("FullModel")
 soil.fm <- prestogp_fit(soil.fm, y, X, locs)
 soil.fm
 ```
 
+
 ## Fit multivariate model
+Fit a multivariate Vecchia GP to two nitrogen outcomes with shared locations and covariates. The model estimates separate Matérn terms per outcome plus cross-correlation, and regression coefficients per outcome. Print results.
 ```{r multivariate-model}
 ym <- list(soil[,5], soil[,7])                 # two nitrogen concentrations
 Xm <- list(); Xm[[1]] <- Xm[[2]] <- as.matrix(soil[,c(4,6,8,9)])
@@ -69,7 +79,9 @@ soil.mvm <- prestogp_fit(soil.mvm, ym, Xm, locsm)
 soil.mvm
 ```
 
+
 ## Fit spatial-elevation model
+Use another dataset with elevation as a third coordinate. Fit a Vecchia GP with coordinate scaling (c(1,1,2)) to allow different correlation ranges horizontally vs along elevation. Show fitted parameters.
 ```{r space-elevation-model}
 
 library(geoR)
@@ -87,6 +99,7 @@ soil.vm.elev
 
 
 ## Plot moisture vs first covariate
+Quick exploratory scatter plot of moisture vs the first predictor to visualize their relationship.
 ```{r plot}
 df_plot <- data.frame(y = y, x = X[,1])
 ggplot(df_plot, aes(x, y)) + geom_point(alpha = 0.5) + labs(x="X1", y="Moisture")
