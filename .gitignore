@@ -3,3 +3,4 @@ raw_data/
 clean_data/
 _targets/
 *.sif
+*.parquet
