@@ -48,8 +48,8 @@ From: rocker/geospatial:latest
       'sf','terra','raster','ncdf4','dplyr','tidyr','archive',
       'languageserver','targets','xml2','exactextractr',
       'rOpenGov/secretbase@0.5.0',
-      'NIEHS/amadeus','stringr','circular','gganimate','gifski','cowplot','viridis','mgcv',
-      'h3lib','h3r','h3jsr','V8', 'janitor', 'duckdb', 'DBI', 'tigris'
+      'stringr','circular','gganimate','gifski','cowplot','viridis','mgcv',
+      'h3lib','h3r','h3jsr','V8', 'janitor', 'duckdb', 'DBI', 'tigris', 'readxl'
     ))"
 
     Rscript -e "devtools::install_github('NIEHS/PrestoGP')"

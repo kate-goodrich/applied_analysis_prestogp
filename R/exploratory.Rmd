@@ -1,0 +1,84 @@
+---
+title: "EDA for outcome variables and covariates"
+output: html_document
+---
+
+
+loading packages
+```{r load-packages, message=FALSE}
+
+library(arrow)
+library(dplyr)
+library(knitr)
+
+```
+
+
+
+
+# outcome variables: range, time resolution, censorship, distrubution, heat map
+
+looking at chlorine
+```{r chlorine-eda}
+library(arrow)
+library(dplyr)
+library(knitr)
+
+old_dir <- "clean_data/parquet_original"
+new_dir <- "clean_data/parquet_2"
+param <- "88115"  # Chlorine (Fine)
+yr <- 2021
+
+# --- show schemas ---
+old_schema <- open_dataset(file.path(old_dir, paste0("AQSParamCode=", param),
+                                     paste0("Year=", yr)))$schema$names
+new_schema <- open_dataset(file.path(new_dir, paste0("AQSParamCode=", param),
+                                     paste0("Year=", yr)))$schema$names
+
+kable(list(
+  "Old parquet" = old_schema,
+  "New parquet" = new_schema
+), caption = "Schema comparison showing the new POC field")
+
+# --- quick coordinate & duplicate summaries ---
+read_part <- function(dir) {
+  path <- file.path(dir, paste0("AQSParamCode=", param), paste0("Year=", yr))
+  ds <- open_dataset(path, format = "parquet")
+  sel <- intersect(c("SiteCode","POC","FactDate","AQSParamCode",
+                     "FactValue","MDL","Longitude","Latitude"), ds$schema$names)
+  ds %>% select(all_of(sel)) %>% collect()
+}
+
+old <- read_part(old_dir)
+new <- read_part(new_dir)
+
+summary_tbl <- tibble(
+  dataset = c("Old parquet","New parquet"),
+  rows = c(nrow(old), nrow(new)),
+  missing_coords = c(sum(is.na(old$Longitude) | is.na(old$Latitude)),
+                     sum(is.na(new$Longitude) | is.na(new$Latitude))),
+  pct_missing = round(100 * missing_coords / rows, 2)
+)
+
+dup_test <- function(df, key_vars) {
+  df %>%
+    count(across(all_of(key_vars))) %>%
+    filter(n > 1) %>%
+    summarise(dup_keys = n(), extra_rows = sum(n - 1))
+}
+
+dups_old <- dup_test(old, intersect(c("SiteCode","FactDate","AQSParamCode","POC"), names(old)))
+dups_new <- dup_test(new, intersect(c("SiteCode","FactDate","AQSParamCode","POC"), names(new)))
+
+dup_tbl <- tibble(
+  dataset = c("Old parquet","New parquet"),
+  dup_keys = c(dups_old$dup_keys, dups_new$dup_keys),
+  extra_rows = c(dups_old$extra_rows, dups_new$extra_rows)
+)
+
+kable(summary_tbl, caption = "Missing coordinates before and after rebuild")
+kable(dup_tbl, caption = "Exact duplicate rows before and after rebuild")
+
+```
+
+# covariates

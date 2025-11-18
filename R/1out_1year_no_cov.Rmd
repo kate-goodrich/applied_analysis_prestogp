@@ -1,0 +1,44 @@
+# 1 year: 2021
+# 1 ouput: Chlorine (~35% censored) PID 88115 
+# Covariates excluded
+
+if running in terminal: apptainer shell /ddn/gs1/group/set/PrestoGP_PM/container_prestogp_applied.sif
+
+```{r setup, message=FALSE, warning=FALSE}
+.libPaths("/usr/local/lib/R/site-library")
+library(PrestoGP)
+library(ggplot2)
+library(arrow)
+library(dplyr)
+library(readxl)
+library(stringr)
+set.seed(2025)
+```
+
+
+## Load data and prepare
+```{r load-data}
+chlorine_2021 <- arrow::open_dataset(
+  "/ddn/gs1/group/set/PrestoGP_PM/clean_data/parquet_2/AQSParamCode=88115/Year=2021/"
+) %>% dplyr::collect()
+
+chlorine_2021 %>%
+  dplyr::summarize(
+    n = dplyr::n(),
+    n_missing = sum(is.na(Longitude) | is.na(Latitude)),
+    pct_missing = 100 * n_missing / n
+  )
+
+# base R
+head(chlorine_2021, 10)
+
+
+
+
+
+```
+
+troubleshooting code:
+```{r troubleshooting}
+
+```

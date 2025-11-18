@@ -13,7 +13,7 @@
 set -eu
 
 # Project + container (resolve to the submit directory)
-PROJECT_ROOT="/ddn/gs1/home/poguekl/prestogp_applied"
+PROJECT_ROOT="/ddn/gs1/group/set/PrestoGP_PM"
 CONTAINER_SIF="${PROJECT_ROOT}/container_prestogp_applied.sif"
 
 # Threading hygiene
