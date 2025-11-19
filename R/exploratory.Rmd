@@ -6,79 +6,192 @@ output: html_document
 
 loading packages
 ```{r load-packages, message=FALSE}
-
+.libPaths("/usr/local/lib/R/site-library")
+library(PrestoGP)
+library(ggplot2)
 library(arrow)
 library(dplyr)
+library(readxl)
+library(stringr)
 library(knitr)
-
+library(purrr)
+library(tidyr)
+library(reshape2)
+set.seed(2025)
 ```
 
 
+
+# Reasoning for new clean
+looking at chlorine
+```{r chlorine-eda}
+old_dir <- "clean_data/parquet_original"
+new_dir <- "clean_data/parquet_2"
+param   <- "88115"   # Chlorine (Fine)
+yr      <- 2021
+
+# --- helper to read one param/year from a dir ---
+read_part <- function(dir, param, yr) {
+  path <- file.path(dir, paste0("AQSParamCode=", param), paste0("Year=", yr))
+  ds   <- open_dataset(path, format = "parquet")
+
+  sel <- intersect(
+    c("SiteCode","POC","FactDate","AQSParamCode","FactValue","MDL","Longitude","Latitude"),
+    ds$schema$names
+  )
+
+  ds %>%
+    select(all_of(sel)) %>%
+    collect()
+}
+
+old <- read_part(old_dir, param, yr)
+new <- read_part(new_dir, param, yr)
+
+# ============================================
+# 1) Helper: define duplicate key consistently
+# ============================================
+
+dup_key_vars <- function(df) {
+  # Always try to use the richest key:
+  # SiteCode, FactDate, AQSParamCode, POC (if present)
+  intersect(c("SiteCode", "FactDate", "AQSParamCode", "POC"), names(df))
+}
+
+# ============================================
+# 2) Duplicate summary with explicit key info
+# ============================================
+
+dup_summary <- function(df, label) {
+  key_vars <- dup_key_vars(df)
+
+  key_counts <- df %>%
+    count(across(all_of(key_vars)), name = "n_per_key")
+
+  distinct_keys <- nrow(key_counts)
+  total_rows    <- nrow(df)
+  extra_rows    <- sum(pmax(key_counts$n_per_key - 1, 0))
+  dup_keys      <- sum(key_counts$n_per_key > 1)
+
+  tibble(
+    dataset       = label,
+    key_cols      = paste(key_vars, collapse = ", "),
+    rows          = total_rows,
+    distinct_keys = distinct_keys,
+    dup_keys      = dup_keys,
+    extra_rows    = extra_rows
+  )
+}
+
+dup_tbl2 <- bind_rows(
+  dup_summary(old, "Old parquet"),
+  dup_summary(new, "New parquet")
+)
+
+kable(dup_tbl2, caption = "Duplicate summary with explicit key definition")
+
+# ============================================
+# 3) Per-day view: (SiteCode, FactDate) key
+# ============================================
+
+day_level_summary <- function(df, label) {
+  key_vars <- intersect(c("SiteCode", "FactDate"), names(df))
+
+  key_counts <- df %>%
+    count(across(all_of(key_vars)), name = "n_per_key")
+
+  tibble(
+    dataset           = label,
+    key_cols          = paste(key_vars, collapse = ", "),
+    rows              = nrow(df),
+    distinct_days     = nrow(key_counts),
+    extra_rows_perday = sum(pmax(key_counts$n_per_key - 1, 0))
+  )
+}
+
+day_dup_tbl <- bind_rows(
+  day_level_summary(old, "Old parquet"),
+  day_level_summary(new, "New parquet")
+)
+
+kable(day_dup_tbl, caption = "Duplicate summary at (SiteCode, FactDate) level")
+```
 
 
 # outcome variables: range, time resolution, censorship, distrubution, heat map
 
-looking at chlorine
-```{r chlorine-eda}
-library(arrow)
-library(dplyr)
-library(knitr)
+```{r outcome-variables}
 
-old_dir <- "clean_data/parquet_original"
-new_dir <- "clean_data/parquet_2"
-param <- "88115"  # Chlorine (Fine)
-yr <- 2021
+base_dir <- "clean_data/parquet_2"
 
-# --- show schemas ---
-old_schema <- open_dataset(file.path(old_dir, paste0("AQSParamCode=", param),
-                                     paste0("Year=", yr)))$schema$names
-new_schema <- open_dataset(file.path(new_dir, paste0("AQSParamCode=", param),
-                                     paste0("Year=", yr)))$schema$names
+param_dirs <- list.dirs(base_dir, recursive = FALSE)
 
-kable(list(
-  "Old parquet" = old_schema,
-  "New parquet" = new_schema
-), caption = "Schema comparison showing the new POC field")
-
-# --- quick coordinate & duplicate summaries ---
-read_part <- function(dir) {
-  path <- file.path(dir, paste0("AQSParamCode=", param), paste0("Year=", yr))
+read_param_folder <- function(path, sample_n = 50000) {
   ds <- open_dataset(path, format = "parquet")
-  sel <- intersect(c("SiteCode","POC","FactDate","AQSParamCode",
-                     "FactValue","MDL","Longitude","Latitude"), ds$schema$names)
-  ds %>% select(all_of(sel)) %>% collect()
+  df <- ds %>% collect()
+
+  # If empty, just return as-is
+  if (nrow(df) == 0) return(df)
+
+  # Optional downsampling
+  if (is.finite(sample_n) && nrow(df) > sample_n) {
+    df <- df %>% slice_sample(n = sample_n)
+  }
+
+  # Extract AQSParamCode from folder name (e.g. "AQSParamCode=88115")
+  param_code <- stringr::str_match(path, "AQSParamCode=([^/]+)")[, 2]
+
+  if (!"AQSParamCode" %in% names(df)) {
+    # Column missing -> create and fill from folder name
+    df <- df %>%
+      mutate(AQSParamCode = param_code)
+  } else {
+    # Column exists -> just coerce to character
+    df <- df %>%
+      mutate(AQSParamCode = as.character(AQSParamCode))
+  }
+
+  df
 }
 
-old <- read_part(old_dir)
-new <- read_part(new_dir)
+combined <- map_dfr(param_dirs, read_param_folder)
 
-summary_tbl <- tibble(
-  dataset = c("Old parquet","New parquet"),
-  rows = c(nrow(old), nrow(new)),
-  missing_coords = c(sum(is.na(old$Longitude) | is.na(old$Latitude)),
-                     sum(is.na(new$Longitude) | is.na(new$Latitude))),
-  pct_missing = round(100 * missing_coords / rows, 2)
-)
+numeric_vars <- combined %>% 
+  select(where(is.numeric)) %>%
+  names()
 
-dup_test <- function(df, key_vars) {
-  df %>%
-    count(across(all_of(key_vars))) %>%
-    filter(n > 1) %>%
-    summarise(dup_keys = n(), extra_rows = sum(n - 1))
-}
+# Melt for ggplot
+long_numeric <- combined %>%
+  select(all_of(numeric_vars)) %>%
+  mutate(row = row_number()) %>%
+  pivot_longer(-row, names_to = "variable", values_to = "value")
 
-dups_old <- dup_test(old, intersect(c("SiteCode","FactDate","AQSParamCode","POC"), names(old)))
-dups_new <- dup_test(new, intersect(c("SiteCode","FactDate","AQSParamCode","POC"), names(new)))
+ggplot(long_numeric, aes(x = value)) +
+  geom_histogram(bins = 40, color = "white") +
+  facet_wrap(~ variable, scales = "free") +
+  theme_minimal() +
+  labs(title = "Distributions")
 
-dup_tbl <- tibble(
-  dataset = c("Old parquet","New parquet"),
-  dup_keys = c(dups_old$dup_keys, dups_new$dup_keys),
-  extra_rows = c(dups_old$extra_rows, dups_new$extra_rows)
-)
 
-kable(summary_tbl, caption = "Missing coordinates before and after rebuild")
-kable(dup_tbl, caption = "Exact duplicate rows before and after rebuild")
+num_df <- combined %>% 
+  select(where(is.numeric)) %>%
+  select(where(~ sd(., na.rm = TRUE) > 0))  # remove constant columns
+
+corr <- cor(num_df, use = "pairwise.complete.obs")
+
+melted <- reshape2::melt(corr)
+
+ggplot(melted, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(title = "Correlation Heatmap", x = "", y = "")
+
 
 ```
+
+
+
 
 # covariates
