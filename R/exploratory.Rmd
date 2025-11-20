@@ -1,29 +1,35 @@
 ---
 title: "EDA for outcome variables and covariates"
 output: html_document
+params:
+  spec_parquet_files: NULL
+
 ---
 
 
-loading packages
-```{r load-packages, message=FALSE}
+```{r load-packages, message=FALSE, echo=FALSE}
 .libPaths("/usr/local/lib/R/site-library")
 library(PrestoGP)
-library(ggplot2)
-library(arrow)
 library(dplyr)
-library(readxl)
-library(stringr)
-library(knitr)
 library(purrr)
+library(arrow)
+library(ggplot2)
 library(tidyr)
+library(stringr)
 library(reshape2)
+library(lubridate)
+library(knitr)
+library(kableExtra)
 set.seed(2025)
 ```
 
 
 
-# Reasoning for new clean
-looking at chlorine
+# New Clean or No?
+Parameter Occurence Code: An abstraction used to distinguish multiple spatially/temporally coincident measurements of the same parameter; Usually indicates a distinct instrument at the site
+
+I removed observations with duplicate date/parameter/sitecode/poc combinations since there was a small number of duplicates. I also consolidated those with multiple POCs in the same date/parameter/sitecode to the lowest number. The EPA says POCs are site specific and are arbitrary across sites. So there may not be justification for consolidating. It felt right to have 1 observation per day since 95% already had this, and to pick the more common POC when multiples existed, but I should see what Kyle thinks. 
+
 ```{r chlorine-eda}
 old_dir <- "clean_data/parquet_original"
 new_dir <- "clean_data/parquet_2"
@@ -90,108 +96,362 @@ dup_tbl2 <- bind_rows(
 
 kable(dup_tbl2, caption = "Duplicate summary with explicit key definition")
 
-# ============================================
-# 3) Per-day view: (SiteCode, FactDate) key
-# ============================================
 
-day_level_summary <- function(df, label) {
-  key_vars <- intersect(c("SiteCode", "FactDate"), names(df))
-
-  key_counts <- df %>%
-    count(across(all_of(key_vars)), name = "n_per_key")
-
-  tibble(
-    dataset           = label,
-    key_cols          = paste(key_vars, collapse = ", "),
-    rows              = nrow(df),
-    distinct_days     = nrow(key_counts),
-    extra_rows_perday = sum(pmax(key_counts$n_per_key - 1, 0))
-  )
-}
-
-day_dup_tbl <- bind_rows(
-  day_level_summary(old, "Old parquet"),
-  day_level_summary(new, "New parquet")
-)
-
-kable(day_dup_tbl, caption = "Duplicate summary at (SiteCode, FactDate) level")
 ```
 
 
-# outcome variables: range, time resolution, censorship, distrubution, heat map
+# EDA on outcome variables: 
 
-```{r outcome-variables}
-
-base_dir <- "clean_data/parquet_2"
+```{r outcome-variables, fig.width=20, fig.height=28, dpi=150}
+base_dir <- params$spec_parquet_files
 
 param_dirs <- list.dirs(base_dir, recursive = FALSE)
 
-read_param_folder <- function(path, sample_n = 50000) {
-  ds <- open_dataset(path, format = "parquet")
-  df <- ds %>% collect()
+# exclude the unwanted hive partition folder
+param_dirs <- param_dirs[!grepl("__HIVE_DEFAULT_PARTITION__", param_dirs)]
 
-  # If empty, just return as-is
+read_param_folder <- function(path, sample_n = Inf) {
+  if (grepl("__HIVE_DEFAULT_PARTITION__", path)) return(dplyr::tibble())
+
+  ds <- arrow::open_dataset(path, format = "parquet")
+  df <- ds %>% dplyr::collect()
+
   if (nrow(df) == 0) return(df)
 
-  # Optional downsampling
-  if (is.finite(sample_n) && nrow(df) > sample_n) {
-    df <- df %>% slice_sample(n = sample_n)
-  }
-
-  # Extract AQSParamCode from folder name (e.g. "AQSParamCode=88115")
   param_code <- stringr::str_match(path, "AQSParamCode=([^/]+)")[, 2]
 
   if (!"AQSParamCode" %in% names(df)) {
-    # Column missing -> create and fill from folder name
-    df <- df %>%
-      mutate(AQSParamCode = param_code)
+    df <- df %>% dplyr::mutate(AQSParamCode = param_code)
   } else {
-    # Column exists -> just coerce to character
-    df <- df %>%
-      mutate(AQSParamCode = as.character(AQSParamCode))
+    df <- df %>% dplyr::mutate(AQSParamCode = as.character(AQSParamCode))
+  }
+
+  if (is.finite(sample_n) && nrow(df) > sample_n) {
+    df <- df %>% dplyr::slice_sample(n = sample_n)
   }
 
   df
 }
 
-combined <- map_dfr(param_dirs, read_param_folder)
 
-numeric_vars <- combined %>% 
-  select(where(is.numeric)) %>%
-  names()
+if (length(param_dirs) == 0) {
+  stop("No parameter directories found in clean_data/parquet_2")
+}
 
-# Melt for ggplot
-long_numeric <- combined %>%
-  select(all_of(numeric_vars)) %>%
-  mutate(row = row_number()) %>%
-  pivot_longer(-row, names_to = "variable", values_to = "value")
+combined <- purrr::map_dfr(param_dirs, read_param_folder)
 
-ggplot(long_numeric, aes(x = value)) +
-  geom_histogram(bins = 40, color = "white") +
-  facet_wrap(~ variable, scales = "free") +
-  theme_minimal() +
-  labs(title = "Distributions")
+if (nrow(combined) == 0) {
+  stop("Combined data has 0 rows.")
+}
 
 
-num_df <- combined %>% 
-  select(where(is.numeric)) %>%
-  select(where(~ sd(., na.rm = TRUE) > 0))  # remove constant columns
+poc_by_param <- combined %>%
+  dplyr::group_by(AQSParamCode, ParamName, POC) %>%
+  dplyr::summarise(
+    n_obs = dplyr::n(),
+    .groups = "drop"
+  )
 
-corr <- cor(num_df, use = "pairwise.complete.obs")
+param_poc_summary <- poc_by_param %>%
+  dplyr::group_by(AQSParamCode, ParamName) %>%
+  dplyr::summarise(
+    n_pocs     = dplyr::n_distinct(POC),
+    pocs       = paste(sort(unique(POC)), collapse = ", "),
+    total_obs  = sum(n_obs),
+    .groups = "drop"
+  ) %>%
+  dplyr::arrange(desc(n_pocs), AQSParamCode, ParamName)
 
-melted <- reshape2::melt(corr)
-
-ggplot(melted, aes(Var1, Var2, fill = value)) +
-  geom_tile() +
-  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  labs(title = "Correlation Heatmap", x = "", y = "")
-
+kable(
+  param_poc_summary,
+  caption = "POC usage summary by parameter"
+)
 
 ```
 
 
+
+
+```{r multi-poc-params, echo=FALSE}
+param_multi_poc_counts_simple <- combined %>%
+  # Count observations for each ParamName × POC
+  dplyr::group_by(ParamName, POC) %>%
+  dplyr::summarise(
+    n_obs = dplyr::n(),
+    .groups = "drop"
+  ) %>%
+  # Collapse POC counts into readable string
+  dplyr::group_by(ParamName) %>%
+  dplyr::summarise(
+    n_pocs    = dplyr::n_distinct(POC),
+    poc_counts = paste0("POC ", POC, ": ", n_obs, collapse = "; "),
+    .groups = "drop"
+  ) %>%
+  # Keep parameters that truly have multiple POCs
+  dplyr::filter(n_pocs > 1L) %>%
+  # Final output: ONLY ParamName + poc_counts
+  dplyr::select(ParamName, poc_counts) %>%
+  dplyr::arrange(ParamName)
+
+kable(
+  param_multi_poc_counts_simple,
+  caption = "Parameters with Multiple POCs (Observation Counts Only)"
+)
+
+
+
+summary_by_param <- combined %>%
+  dplyr::group_by(AQSParamCode, ParamName, Units) %>%
+  dplyr::arrange(FactDate, .by_group = TRUE) %>%
+  dplyr::summarise(
+    n_obs          = dplyr::n(),
+    n_sites        = dplyr::n_distinct(SiteCode),
+    n_days         = dplyr::n_distinct(FactDate),
+    first_date     = min(FactDate, na.rm = TRUE),
+    last_date      = max(FactDate, na.rm = TRUE),
+    min_value      = min(FactValue, na.rm = TRUE),
+    max_value      = max(FactValue, na.rm = TRUE),
+    min_MDL        = min(MDL, na.rm = TRUE),
+    max_MDL        = max(MDL, na.rm = TRUE),
+    prop_below_MDL = mean(FactValue < MDL, na.rm = TRUE),
+    time_res_days  = {
+      u_dates <- sort(unique(FactDate))
+      if (length(u_dates) > 1L) median(diff(u_dates)) else NA_real_
+    },
+    .groups = "drop"
+  )
+
+kable(summary_by_param, caption = "Summary by parameter")
+
+ 
+ 
+
+
+ 
+ median_mdl <- combined %>%
+  dplyr::group_by(ParamName) %>%
+  dplyr::summarise(
+    median_MDL = median(MDL, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+p <- ggplot(combined, aes(x = FactValue)) +
+  geom_density(
+    linewidth = 1.2,
+    color = "darkgreen",
+    na.rm = TRUE
+  ) +
+  geom_vline(
+    data = median_mdl,
+    aes(xintercept = median_MDL),
+    color = "red",           # solid red line
+    linewidth = 1.1
+  ) +
+  facet_wrap(
+    ~ ParamName,
+    scales = "free",
+    ncol = 3
+  ) +
+  theme_minimal(base_size = 18) +      # larger overall text
+  theme(
+    strip.text = element_text(size = 16),
+    plot.title = element_text(size = 22, face = "bold"),
+    axis.text = element_text(size = 14)
+  ) +
+  labs(
+    title = "FactValue Density with Median MDL",
+    x = "FactValue",
+    y = "Density"
+  )
+
+p
+
+# zoom in one sd from mean
+
+# --- 1. Per-parameter summary: mean, SD, median MDL ---
+stats <- combined %>%
+  dplyr::group_by(ParamName) %>%
+  dplyr::summarise(
+    mean_FV   = mean(FactValue, na.rm = TRUE),
+    sd_FV     = sd(FactValue, na.rm = TRUE),
+    median_MDL = median(MDL, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# --- 2. Zoomed data: keep only within mean ± 1 SD for each parameter ---
+combined_zoom <- combined %>%
+  dplyr::inner_join(stats, by = "ParamName") %>%
+  dplyr::filter(
+    !is.na(FactValue),
+    FactValue >= (mean_FV - sd_FV),
+    FactValue <= (mean_FV + sd_FV)
+  )
+
+# --- 3. Plot: density + solid red MDL, zoomed to ±1 SD region ---
+p_zoom <- ggplot(combined_zoom, aes(x = FactValue)) +
+  geom_density(
+    linewidth = 1.2,
+    color = "darkgreen",
+    na.rm = TRUE
+  ) +
+  geom_vline(
+    data = stats,
+    aes(xintercept = median_MDL),
+    color = "red",
+    linewidth = 1.1
+  ) +
+  facet_wrap(
+    ~ ParamName,
+    scales = "free",
+    ncol = 3
+  ) +
+  theme_minimal(base_size = 18) +
+  theme(
+    strip.text  = element_text(size = 16),
+    plot.title  = element_text(size = 22, face = "bold"),
+    axis.text   = element_text(size = 14)
+  ) +
+  labs(
+    title = "FactValue Density (Zoomed to Mean ± 1 SD) with Median MDL",
+    x     = "FactValue",
+    y     = "Density"
+  )
+
+p_zoom
+
+
+
+ 
+wide_contam <- combined %>%
+  dplyr::select(SiteCode, FactDate, ParamName, FactValue) %>%
+  dplyr::distinct() %>%
+  tidyr::pivot_wider(
+    id_cols    = c(SiteCode, FactDate),
+    names_from = ParamName,
+    values_from = FactValue
+  )
+
+contam_cols <- setdiff(names(wide_contam), c("SiteCode", "FactDate"))
+
+# 1) Keep only numeric columns for correlation
+num_df <- wide_contam %>%
+  dplyr::select(dplyr::all_of(contam_cols)) %>%
+  dplyr::select(where(is.numeric))
+
+# 2) Drop constant or all-NA columns safely
+if (ncol(num_df) > 0L) {
+  sd_vec <- vapply(num_df, function(x) sd(x, na.rm = TRUE), numeric(1))
+
+  # keep columns with SD > 0 (and non-NA)
+  keep_cols <- !is.na(sd_vec) & sd_vec > 0
+  num_df <- num_df[, keep_cols, drop = FALSE]
+}
+
+if (ncol(num_df) > 1L) {
+  # 3) Compute correlation on a numeric matrix
+  corr <- stats::cor(as.matrix(num_df), use = "pairwise.complete.obs")
+
+  melted <- reshape2::melt(corr)
+
+  ggplot(melted, aes(Var1, Var2, fill = value)) +
+    geom_tile() +
+    scale_fill_gradient2(
+      low = "blue", high = "red", mid = "white", midpoint = 0
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 90, hjust = 1),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank()
+    ) +
+    labs(
+      title = "Correlation Heatmap of Contaminants"
+    )
+} else {
+  message("Not enough non-constant numeric contaminants to compute correlations.")
+}
+
+
+
+ 
+p_time <- ggplot(combined, aes(x = FactDate)) +
+  geom_histogram(
+    binwidth = 30,              # approx monthly bins
+    fill = "darkgreen",         # bar fill
+    color = "white",            # outline to help visibility
+    alpha = 0.9
+  ) +
+  facet_wrap(
+    ~ ParamName,
+    scales = "free_y",
+    ncol = 3                  
+  ) +
+  theme_minimal(base_size = 16) +
+  theme(
+    strip.text = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  labs(
+    title = "Sampling Over Time by Contaminant",
+    x = "Date",
+    y = "Number of Measurements"
+  )
+
+p_time
+
+
+
+one_param <- "Chlorine (Fine)"
+
+site_counts <- combined %>%
+  dplyr::filter(ParamName == one_param) %>%
+  dplyr::count(SiteCode, name = "n_obs") %>%
+  dplyr::arrange(desc(n_obs))
+
+ggplot(site_counts, aes(x = n_obs)) +
+  geom_histogram(
+    bins = 30,
+    fill = "red",
+    color = "black",     
+    linewidth = 0.3       # optional: thin border for clean look
+  ) +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = paste("Distribution of Site Observation Counts —", one_param),
+    x = "Number of Measurements per Site",
+    y = "Number of Sites"
+  )
+
+
+
+monthly_ts <- combined %>%
+  dplyr::mutate(YearMonth = lubridate::floor_date(FactDate, unit = "month")) %>%
+  dplyr::group_by(ParamName, YearMonth) %>%
+  dplyr::summarise(
+    mean_value = mean(FactValue, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+p_ts_monthly <- ggplot(monthly_ts, aes(x = YearMonth, y = mean_value)) +
+  geom_line(color = "darkgreen", linewidth = 1) +
+  facet_wrap(~ ParamName, scales = "free_y", ncol = 3) +
+  theme_minimal(base_size = 16) +
+  theme(
+    strip.text = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  labs(
+    title = "Monthly Time Series by Parameter",
+    x = "Month",
+    y = "Mean FactValue"
+  )
+
+p_ts_monthly
+
+```
+
+
+scratch 
 
 
 # covariates

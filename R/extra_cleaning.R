@@ -31,6 +31,32 @@ build_spec_parquet_from_refs <- function(
         )
     }
 
+    ### restrict to these parameter names
+    params_in <- c(
+        "Aluminum (Fine)",
+        "Arsenic (Fine)",
+        "Bromine (Fine)",
+        "Calcium (Fine)",
+        "Chlorine (Fine)",
+        "Chromium (Fine)",
+        "Copper (Fine)",
+        "Iron (Fine)",
+        "Potassium (Fine)",
+        "Magnesium (Fine)",
+        "Manganese (Fine)",
+        "Sodium (Fine)",
+        "Nickel (Fine)",
+        "Phosphorus (Fine)",
+        "Rubidium (Fine)",
+        "Selenium (Fine)",
+        "Silicon (Fine)",
+        "Strontium (Fine)",
+        "Titanium (Fine)",
+        "Vanadium (Fine)",
+        "Zinc (Fine)",
+        "Zirconium (Fine)"
+    )
+
     # ---- references ----
     csn_sites_ref <- readr::read_csv(
         csn_sites_ref_csv,
@@ -59,7 +85,8 @@ build_spec_parquet_from_refs <- function(
             AQSParamCode = as.character(AQSParamCode),
             ParamName = as.character(ParamName),
             Units = as.character(Units)
-        )
+        ) |>
+        dplyr::filter(ParamName %in% params_in)
 
     # unique ref keys
     csn_sites_by_site <- csn_sites_ref |>
@@ -106,13 +133,19 @@ build_spec_parquet_from_refs <- function(
             FactValue,
             MDL
         ) |>
-        # drop exact duplicates before shipping to R
         dplyr::distinct() |>
         dplyr::collect() |>
         dplyr::mutate(
             SiteCode = pad9(SiteCode),
             POC = as.character(POC),
             AQSParamCode = as.character(AQSParamCode)
+        ) |>
+        # convert -999 and -777 to NA in all numeric columns
+        dplyr::mutate(
+            dplyr::across(
+                where(is.numeric),
+                ~ dplyr::na_if(dplyr::na_if(., -999), -777)
+            )
         )
 
     csn_final <- csn_raw_tbl |>
@@ -124,6 +157,7 @@ build_spec_parquet_from_refs <- function(
         ) |>
         dplyr::select(-tidyr::ends_with("_aqs")) |>
         dplyr::left_join(params_by_aqs, by = "AQSParamCode") |>
+        dplyr::filter(!is.na(ParamName)) |>
         dplyr::transmute(
             SiteCode,
             POC,
@@ -153,18 +187,25 @@ build_spec_parquet_from_refs <- function(
             FactValue,
             MDL
         ) |>
-        # drop exact duplicates before shipping to R
         dplyr::distinct() |>
         dplyr::collect() |>
         dplyr::mutate(
-            SiteCode = pad9(SiteCode), # harmless for alphanumerics
+            SiteCode = pad9(SiteCode),
             POC = as.character(POC),
             ParamCode = as.character(ParamCode)
+        ) |>
+        # convert -999 and -777 to NA in all numeric columns
+        dplyr::mutate(
+            dplyr::across(
+                where(is.numeric),
+                ~ dplyr::na_if(dplyr::na_if(., -999), -777)
+            )
         )
 
     improve_final <- improve_raw_tbl |>
         dplyr::left_join(improve_sites_by_site, by = "SiteCode") |>
         dplyr::left_join(params_by_imp, by = "ParamCode") |>
+        dplyr::filter(!is.na(ParamName)) |>
         dplyr::transmute(
             SiteCode,
             POC,
@@ -179,10 +220,50 @@ build_spec_parquet_from_refs <- function(
             Network = "IMPROVE"
         )
 
-    # ---- combine, add Year, write parquet ----
+    # ---- combine, choose lowest POC per day/site/param, ensure no duplicates ----
     spec_data <- dplyr::bind_rows(csn_final, improve_final) |>
-        dplyr::mutate(Year = lubridate::year(FactDate))
+        # numeric POC for ordering; may be NA (IMPROVE, etc.)
+        dplyr::mutate(
+            POC_num = suppressWarnings(as.numeric(POC))
+        ) |>
+        # group at the level you care about
+        dplyr::group_by(
+            SiteCode,
+            FactDate,
+            ParamName,
+            AQSParamCode,
+            Units,
+            Network
+        ) |>
+        # decide which POC to keep:
+        dplyr::mutate(
+            has_non_na_poc = any(!is.na(POC_num)),
+            chosen_poc = dplyr::case_when(
+                has_non_na_poc ~ min(POC_num, na.rm = TRUE),
+                TRUE ~ NA_real_
+            )
+        ) |>
+        # keep:
+        # - the row(s) with the smallest POC if any exist
+        # - otherwise, just the first row (all POC NA)
+        dplyr::filter(
+            (has_non_na_poc & POC_num == chosen_poc) |
+                (!has_non_na_poc & dplyr::row_number() == 1L)
+        ) |>
+        # now aggregate in case we still have >1 row for the same key+POC
+        dplyr::summarise(
+            POC = dplyr::first(POC),
+            FactValue = mean(FactValue, na.rm = TRUE),
+            MDL = mean(MDL, na.rm = TRUE),
+            Longitude = dplyr::first(Longitude),
+            Latitude = dplyr::first(Latitude),
+            .groups = "drop"
+        ) |>
+        dplyr::mutate(
+            Year = lubridate::year(FactDate)
+        )
 
+    # ---- write parquet ----
     fs::dir_create(out_dir)
     arrow::write_dataset(
         arrow::as_arrow_table(spec_data),
@@ -191,5 +272,6 @@ build_spec_parquet_from_refs <- function(
         partitioning = c("AQSParamCode", "Year")
     )
 
-    fs::dir_ls(out_dir, recurse = TRUE, type = "file")
+    # return the directory path for targets
+    out_dir
 }

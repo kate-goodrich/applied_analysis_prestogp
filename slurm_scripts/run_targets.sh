@@ -5,7 +5,7 @@
 #SBATCH --partition=highmem
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=300G
+#SBATCH --mem=500G
 #SBATCH --mail-user=kate.pogue@nih.gov
 #SBATCH --mail-type=BEGIN,END,FAIL
 
